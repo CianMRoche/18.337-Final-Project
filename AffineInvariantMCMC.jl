@@ -65,6 +65,7 @@ function get_lnprob(S::Sampler, pos::Array{Float64})
 end
 
 function sample_serial(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, storechain::Bool)
+    println("Starting serial sampling...")
     k = S.n_walkers
     halfk = fld(k, 2)
     
@@ -114,8 +115,61 @@ function sample_serial(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, 
     return p
 end
 
-function sample_parallel(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, storechain::Bool)
+function sample_multithreaded(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, storechain::Bool)
+    println("Starting multi-threaded sampling...")
+    k = S.n_walkers
+    halfk = fld(k, 2)
+    
+    p = copy(p0)
+    lnprob = get_lnprob(S, p)
+    
+    i0 = size(S.chain, 3)
+    
+    # Add N/thin columns of zeroes to the Sampler's chain and ln_posterior
+    if storechain
+	S.chain = cat(S.chain, zeros(Float64, (k, S.dim, fld(N,thin))); dims = 3)
+	S.ln_posterior = cat(S.ln_posterior, zeros(Float64, (k, fld(N,thin))); dims = 2)
+    end
+    
+    first = 1 : halfk
+    second = halfk+1 : k
+    divisions = [(first, second), (second, first)]
+    
+    Threads.@threads for i = i0+1 : i0+N
+    #tid = Threads.threadid()
+    #println("This is thread $tid")
+	for ensembles in divisions
+	    active, passive = ensembles
+	    l_pas = size(passive,1)
+	    for k in active
+	        X_active = vec(p[k,:])
+	        choice = passive[rand(1:l_pas)]
+	        X_passive = vec(p[choice,:])
+	        z = randZ(S.a)
+	        proposal = X_passive + z*(X_active - X_passive)
+	        new_lnprob = call_lnprob(S, proposal)
+	        log_ratio = (S.dim - 1) * log(z) + new_lnprob - lnprob[k]
+	        if log(rand()) <= log_ratio
+	            lnprob[k] = new_lnprob
+	            p[k,:] .= proposal
+	            S.accepted += 1
+	        end
+	        S.iterations += 1
+                if (i - i0) % thin == 0
+                    if storechain
+	                S.ln_posterior[k, fld(i,thin)] = lnprob[k]
+	                S.chain[k, :, fld(i,thin)] .= vec(p[k,:])
+                    end # storechain
+                    S.callback(S, i - i0, fld(i,thin), k)
+	        end # thin
+	    end # k in active
+	end # ensemble
+    end # main loop
+    return p
+end
 
+function sample_parallel(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, storechain::Bool)
+    println("Starting distributed parallel sampling...")
     k = S.n_walkers
     halfk = fld(k, 2)
     
@@ -176,9 +230,11 @@ function sample_parallel(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64
     return p
 end
 
-function sample(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, storechain::Bool, parallel::Bool = nprocs() > 1)
+function sample(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, storechain::Bool, parallel::Bool = nprocs() > 1, multithreaded::Bool = Threads.nthreads() > 1)
     if parallel
         sample_parallel(S, p0, N, thin, storechain)
+    elseif multithreaded
+        sample_multithreaded(S, p0, N, thin, storechain)
     else
         sample_serial(S, p0, N, thin, storechain)
     end
