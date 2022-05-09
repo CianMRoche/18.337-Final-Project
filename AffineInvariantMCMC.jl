@@ -116,7 +116,7 @@ function sample_serial(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, 
 end
 
 function sample_multithreaded(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, storechain::Bool)
-    println("Starting multi-threaded sampling...")
+    #println("Starting multi-threaded sampling...")
     k = S.n_walkers
     halfk = fld(k, 2)
     
