@@ -1,0 +1,25 @@
+#!/bin/bash
+#SBATCH --job-name=6338_emcee_64
+#SBATCH -N 1
+#SBATCH -n 64
+#SBATCH --mem-per-cpu=4GB
+#SBATCH -t 0-00:05:00
+#SBATCH --mail-type=begin
+#SBATCH --mail-type=end
+#SBATCH --mail-user=roche@mit.edu
+#SBATCH -o 6338_emcee_64_50walkers_out.txt
+#SBATCH -p sched_mit_lnecib
+#SBATCH -C centos7
+
+export OMP_NUM_THREADS=1
+
+# Chosen partition has 16 nodes with 64 cores per node
+
+# -------- Load Environment --------
+cd /home/roche/anaconda3/envs/py3/bin
+source activate py3
+
+# -------- Go to work directory --------
+cd /pool001/roche/classes/6.338/final_project
+
+mpirun -np 64 python3 affine_python_as_script.py  # Actual MCMC call
