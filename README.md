@@ -1,4 +1,3 @@
-# 6.338project
 Final Project for MIT course 6.338 (18.337).
 
 # Practical Bayesian Sampling in Python and Julia
