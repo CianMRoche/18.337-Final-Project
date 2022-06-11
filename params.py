@@ -13,8 +13,8 @@ levels = [0.68,0.95]
 
 #[MCMC Parameters]
 nwalkers = 50          
-nsamples_burnin = 400   # discarded samples per walker
-nsamples = 1000         # post-burnin samples per walker
+nsamples_burnin = 100   # discarded samples per walker
+nsamples = 100         # post-burnin samples per walker
 vesc_guess = 500
 k_guess = 2.2
 frac_guess = -11.5   # = np.log(1e-5)
@@ -29,7 +29,7 @@ rgcmin = 7.0
 rgcmax = 9.0
 z_min = 0.0
 z_max = 15.0
-verrcut = 0.05 # 5% error
+verrcut = 0.05 # 1%  5% error
 error_type = "percent"  # Types of errors: 'percent', 'no_errors', 'absolute'
 vmin = 1
 vphicut = 0

@@ -13,6 +13,7 @@
 using JLD
 import Random: rand
 import Distributed: pmap
+using ProgressMeter
 #export Sampler, sample, reset, flat_chain, save_chain
 
 # Random generator for the Z distribution of Goodman & Weare, where
@@ -68,6 +69,8 @@ function sample_serial(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, 
     println("Starting serial sampling...")
     k = S.n_walkers
     halfk = fld(k, 2)
+
+    progress_meter = Progress(N; dt = 5.0, showspeed=true) # update every 5 seconds
     
     p = copy(p0)
     lnprob = get_lnprob(S, p)
@@ -84,7 +87,8 @@ function sample_serial(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, 
     second = halfk+1 : k
     divisions = [(first, second), (second, first)]
     
-    for i = i0+1 : i0+N
+    for i in i0+1 : i0+N
+    next!(progress_meter)
 	for ensembles in divisions
 	    active, passive = ensembles
 	    l_pas = size(passive,1)
@@ -111,9 +115,6 @@ function sample_serial(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, 
                     S.ln_posterior[k, flooridx] = lnprob[k]
                     if accept_step_check # add element to chain if we accepted it
                         S.chain[k, :, flooridx] .= vec(p[k,:])
-#=                     else
-                        println("Setting it to zero")
-                        S.chain[k, :, flooridx] .= 0.0 =#
                     end
                 end # storechain
                 S.callback(S, i - i0, flooridx, k)
@@ -125,10 +126,12 @@ function sample_serial(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, 
 end
 
 function sample_multithreaded(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, storechain::Bool)
-    println("Starting multi-threaded sampling on thread ", Threads.threadid())
+    println("Starting multi-threaded sampling")
     k = S.n_walkers
     halfk = fld(k, 2)
     
+    progress_meter = Progress(N; dt = 5.0, showspeed=true) # update every 5 seconds
+
     p = copy(p0)
     lnprob = get_lnprob(S, p)
     
@@ -144,9 +147,8 @@ function sample_multithreaded(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::
     second = halfk+1 : k
     divisions = [(first, second), (second, first)]
     
-    Threads.@threads for i = i0+1 : i0+N
-    #tid = Threads.threadid()
-    #println("This is thread $tid")
+    Threads.@threads for i in i0+1 : i0+N
+    next!(progress_meter)
 	for ensembles in divisions
 	    active, passive = ensembles
 	    l_pas = size(passive,1)
