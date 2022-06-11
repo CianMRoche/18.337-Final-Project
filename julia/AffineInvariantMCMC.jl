@@ -96,18 +96,27 @@ function sample_serial(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, 
 	        proposal = X_passive + z*(X_active - X_passive)
 	        new_lnprob = call_lnprob(S, proposal)
 	        log_ratio = (S.dim - 1) * log(z) + new_lnprob - lnprob[k]
-	        if log(rand()) <= log_ratio
+
+            accept_step_check = (log(rand()) <= log_ratio)
+	        if accept_step_check
 	            lnprob[k] = new_lnprob
 	            p[k,:] .= proposal
 	            S.accepted += 1
 	        end
+
 	        S.iterations += 1
-                if (i - i0) % thin == 0
-                    if storechain
-	                S.ln_posterior[k, fld(i,thin)] = lnprob[k]
-	                S.chain[k, :, fld(i,thin)] .= vec(p[k,:])
-                    end # storechain
-                    S.callback(S, i - i0, fld(i,thin), k)
+            if (i - i0) % thin == 0
+                flooridx = fld(i,thin)
+                if storechain
+                    S.ln_posterior[k, flooridx] = lnprob[k]
+                    if accept_step_check # add element to chain if we accepted it
+                        S.chain[k, :, flooridx] .= vec(p[k,:])
+#=                     else
+                        println("Setting it to zero")
+                        S.chain[k, :, flooridx] .= 0.0 =#
+                    end
+                end # storechain
+                S.callback(S, i - i0, flooridx, k)
 	        end # thin
 	    end # k in active
 	end # ensemble
@@ -116,7 +125,7 @@ function sample_serial(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, 
 end
 
 function sample_multithreaded(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, storechain::Bool)
-    #println("Starting multi-threaded sampling...")
+    println("Starting multi-threaded sampling on thread ", Threads.threadid())
     k = S.n_walkers
     halfk = fld(k, 2)
     
@@ -149,18 +158,23 @@ function sample_multithreaded(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::
 	        proposal = X_passive + z*(X_active - X_passive)
 	        new_lnprob = call_lnprob(S, proposal)
 	        log_ratio = (S.dim - 1) * log(z) + new_lnprob - lnprob[k]
-	        if log(rand()) <= log_ratio
+
+            accept_step_check = (log(rand()) <= log_ratio)
+	        if accept_step_check
 	            lnprob[k] = new_lnprob
 	            p[k,:] .= proposal
 	            S.accepted += 1
 	        end
 	        S.iterations += 1
-                if (i - i0) % thin == 0
-                    if storechain
-	                S.ln_posterior[k, fld(i,thin)] = lnprob[k]
-	                S.chain[k, :, fld(i,thin)] .= vec(p[k,:])
-                    end # storechain
-                    S.callback(S, i - i0, fld(i,thin), k)
+            if (i - i0) % thin == 0
+                flooridx = fld(i,thin)
+                if storechain
+                    S.ln_posterior[k, flooridx] = lnprob[k]
+                    if accept_step_check # add element to chain if we accepted it
+                        S.chain[k, :, flooridx] .= vec(p[k,:])
+                    end
+                end # storechain
+                S.callback(S, i - i0, flooridx, k)
 	        end # thin
 	    end # k in active
 	end # ensemble
