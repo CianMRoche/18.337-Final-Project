@@ -6,16 +6,16 @@ overwrite = 0
 generate_error = 1       # For simulation runs
 
 #[Plotting]
-#plot = 1
+plot = 1
 test_plotting = 1
 n_steps_to_plot = 50
 levels = [0.68,0.95]
 
 #[MCMC Parameters]
-nwalkers = 50          
-nsamples_burnin = 100   # discarded samples per walker
-nsamples = 100         # post-burnin samples per walker
-vesc_guess = 500
+nwalkers = 200         
+nsamples_burnin = 400   # discarded samples per walker
+nsamples = 2000         # post-burnin samples per walker
+vesc_guess = 550
 k_guess = 2.2
 frac_guess = -11.5   # = np.log(1e-5)
 sigma_guess = 6.7    # = np.log(800)
@@ -31,7 +31,7 @@ z_min = 0.0
 z_max = 15.0
 verrcut = 0.05 # 1%  5% error
 error_type = "percent"  # Types of errors: 'percent', 'no_errors', 'absolute'
-vmin = 1
+vmin = 350
 vphicut = 0
 cutoff = 0.75
 n_test = 2000           # Set to -1 for "include all stars after the other cuts"
@@ -66,8 +66,8 @@ lsr = 0
 simulation="m12f"
 
 #[Analysis]
-sausage = 0
-three_functions = 1
+sausage = 1
+three_functions = 0
 two_vesc = 0
 accreted = 0    # Where should this go??
 outlier = 1

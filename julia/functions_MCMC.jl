@@ -1,7 +1,13 @@
 using SpecialFunctions
-using NumericalIntegration
+#using NumericalIntegration
+using QuadGK
 
 # ------------------------- Useful functions --------------------------
+function constant_factor_helper_function(x::Float64,sigma::Float64, vesc::Float64, k::Float64, vmin::Float64)
+    return (vesc - x)^k * (erf( (x - vmin)/(sqrt(2.0) * sigma) ) + 1.0 )
+end
+
+
 function constant_factor(sigma::Float64, vesc::Float64, k::Float64, vmin::Float64 = 300.0)
     """
     Constant that multiplies the whole function. Needs to be properly normalized to 
@@ -12,20 +18,21 @@ function constant_factor(sigma::Float64, vesc::Float64, k::Float64, vmin::Float6
     :relative_error: boolean, whether the errors are relative
     """
 
-    n_samples = 1001
+    #n_samples = 1001
     min_integral = 0.0
+    
+    #x_integral = Vector(LinRange(min_integral, vesc , n_samples))
+    #y_integral = (abs.(vesc .- x_integral)).^k .* (erf.( (x_integral .- vmin)./(sqrt(2.0) * sigma) ) .+ 1.0 )  
+    #integral = 0.5 * integrate(x_integral, y_integral, SimpsonEven()) #if using, ditch the 0.5 in return statement and [1]
 
-    # this is the lower limit of integration for v_true. the upper limit is given by vesc
-    # cdef double min_integral = max(vmin - 4.0*sigma, 1.0)
-    # cdef double delta_integral = vesc/1000. #(vesc - min_integral)/n_samples
-    # x_integrals = np.linspace(delta_integral, vesc - delta_integral, n_samples)
-    x_integral = Vector(LinRange(min_integral, vesc , n_samples))
+    integral = quadgk(x -> constant_factor_helper_function(x,sigma, vesc, k, vmin), min_integral, vesc)
 
-    y_integral = (abs.(vesc .- x_integral)).^k .* (erf.( (x_integral .- vmin)./(sqrt(2.0) * sigma) ) .+ 1.0 )  
+    return - log(0.5*integral[1])
+end
 
-    integral = 0.5 * integrate(x_integral, y_integral, SimpsonEven())
 
-    return - log(integral)
+function fitting_function_helper_function(x::Float64, v::Float64, vesc::Float64, k::Float64, sigma::Float64)
+    return exp(- (v - x)^2 / (2.0*sigma*sigma)) * (vesc - x)^k / (sqrt(2.0*pi) * sigma)
 end
 
 
@@ -44,34 +51,25 @@ function fitting_function(v::Float64,
 
     logC = constant_factor(sigma, vesc, k, vmin)
 
-    n_samples = 1001 #257
-
+    #n_samples = 1001 #257
     min_integral = 0.0
-    # limit of integration for the possible v_true
 
-    # if (v < vmin): # -- observed v can be above due to errors
-    if any(v .< vmin) # or (v - 5*sigma > vesc): #-- if v is more than 5 sigma away from vesc, 
+    if v < vmin # or (v - 5*sigma > vesc): #-- if v is more than 5 sigma away from vesc, 
         return -Inf
     end
 
-    # x_integrals = np.linspace(min_integral, max_integral, n_samples)
-    x_integral = Vector(LinRange(min_integral, vesc , n_samples))
+    #= x_integral = Vector(LinRange(min_integral, vesc , n_samples))
 
     inside_exp = - (v .- x_integral).^2 ./ (2.0*sigma*sigma)
     exp_term = exp.(inside_exp)
 
-    y_integral = exp_term .* (abs.(vesc  .- x_integral)).^k ./ (sqrt(2.0*pi) * sigma)   # CANT BROADCAST THIS BECAUSE LENGTH OF 
-                                                                                    # SIGMA IS DIFFERENT IN GENERAL TO LENGTH OF 
-                                                                                    # YOUR RANDOM INTEGRATION X ARRAY. HOW IS THIS 
-                                                                                    # SUPPOSED TO BE DONE??
+    y_integral = exp_term .* (abs.(vesc  .- x_integral)).^k ./ (sqrt(2.0*pi) * sigma)   
 
+    integral = integrate(x_integral, y_integral, SimpsonEven()) =#
 
-    integral = integrate(x_integral, y_integral, SimpsonEven())
-    integral *= sign(integral) #enfore positivity for instances when very small values go negative due to floating point error
+    integral = quadgk(x -> fitting_function_helper_function(x, v, vesc, k, sigma), min_integral, vesc)
 
-    #println("Integral (fitting function): ",integral)
-
-    return logC + log(integral) 
+    return logC + log(integral[1]) 
 end
 
 
@@ -118,7 +116,7 @@ function lnlike(theta::Vector{Float64},
         end
 
         sigma = sqrt.(verr.^2 .+ exp(log_sigma)^2) # THIS MIGHT BE A BAD PORT FROM PYTHON
-        println("Sigma (lnlike):",sigma)
+        #println("Sigma (lnlike):",sigma)
         a = sqrt(pi/2.0) .* sigma .* erfc.(vmin./ (sqrt(2.0).*sigma))
 
         
