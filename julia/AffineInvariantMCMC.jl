@@ -113,9 +113,7 @@ function sample_serial(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64, 
                 flooridx = fld(i,thin)
                 if storechain
                     S.ln_posterior[k, flooridx] = lnprob[k]
-                    if accept_step_check # add element to chain if we accepted it
-                        S.chain[k, :, flooridx] .= vec(p[k,:])
-                    end
+                    S.chain[k, :, flooridx] .= vec(p[k,:])
                 end # storechain
                 S.callback(S, i - i0, flooridx, k)
 	        end # thin
@@ -171,10 +169,8 @@ function sample_multithreaded(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::
             if (i - i0) % thin == 0
                 flooridx = fld(i,thin)
                 if storechain
-                    S.ln_posterior[k, flooridx] = lnprob[k]
-                    if accept_step_check # add element to chain if we accepted it
-                        S.chain[k, :, flooridx] .= vec(p[k,:])
-                    end
+                    S.ln_posterior[k, flooridx] = lnprob[k]           
+                    S.chain[k, :, flooridx] .= vec(p[k,:])
                 end # storechain
                 S.callback(S, i - i0, flooridx, k)
 	        end # thin
@@ -235,8 +231,8 @@ function sample_parallel(S::Sampler, p0::Array{Float64,2}, N::Int64, thin::Int64
                 S.iterations += 1
                 if (i - i0) % thin == 0
                     if storechain
-	                S.ln_posterior[k, fld(i,thin)] = lnprob[k]
-	                S.chain[k, :, fld(i,thin)] .= vec(p[k,:])
+	                    S.ln_posterior[k, fld(i,thin)] = lnprob[k]
+	                    S.chain[k, :, fld(i,thin)] .= vec(p[k,:])
                     end # storechain
                     S.callback(S, i - i0, fld(i,thin), k)
 	        end # thin
